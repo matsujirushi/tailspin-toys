@@ -24,6 +24,47 @@ test.describe('Game Listing and Navigation', () => {
     });
   });
 
+  test('should filter games by category and publisher', async ({ page }) => {
+    await test.step('Navigate to homepage and verify filter controls', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('games-filters-form')).toBeVisible();
+      await expect(page.getByTestId('publisher-filter-select')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Apply filters' })).toBeVisible();
+    });
+
+    await test.step('Apply multi-category and single publisher filters', async () => {
+      await page.getByTestId('category-filter-checkbox-1').check();
+      await page.getByTestId('category-filter-checkbox-2').check();
+      await page.getByTestId('publisher-filter-select').selectOption('1');
+      await page.getByTestId('apply-filters-button').click();
+    });
+
+    await test.step('Verify URL query and filtered cards', async () => {
+      await expect(page).toHaveURL(/category=1/);
+      await expect(page).toHaveURL(/category=2/);
+      await expect(page).toHaveURL(/publisher=1/);
+      const cards = page.getByTestId('game-card');
+      expect(await cards.count()).toBeGreaterThan(0);
+    });
+  });
+
+  test('should clear filters and restore full results', async ({ page }) => {
+    await test.step('Apply a category filter', async () => {
+      await page.goto('/?category=1');
+      await expect(page.getByTestId('games-filters-form')).toBeVisible();
+    });
+
+    await test.step('Clear filters', async () => {
+      await page.getByTestId('clear-filters-link').click();
+    });
+
+    await test.step('Verify URL and listing reset', async () => {
+      await expect(page).toHaveURL('/');
+      await expect(page.getByTestId('games-grid')).toBeVisible();
+      expect(await page.getByTestId('game-card').count()).toBeGreaterThan(2);
+    });
+  });
+
   test('should navigate to correct game details page when clicking on a game', async ({ page }) => {
     let gameId: string | null;
     let gameTitle: string | null;
