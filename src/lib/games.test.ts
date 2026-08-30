@@ -3,9 +3,12 @@ import { createTestDatabase } from '../../db/test-helpers';
 import { categories, publishers, games } from '../../db/schema';
 import type { Database } from './db';
 import {
+    getAllCategories,
     getAllGames,
     getAllGameIds,
     getGameById,
+    getAllPublishers,
+    getFilteredGames,
 } from './games';
 
 async function seedGames(db: Database, count: number): Promise<void> {
@@ -30,11 +33,77 @@ async function seedGames(db: Database, count: number): Promise<void> {
     }
 }
 
+async function seedFilterFixture(targetDb: Database): Promise<{
+    strategyId: number;
+    puzzleId: number;
+    novaId: number;
+    pixelId: number;
+}> {
+    const [strategy] = await targetDb.insert(categories).values({ name: 'Strategy', description: 's' }).returning({ id: categories.id });
+    const [puzzle] = await targetDb.insert(categories).values({ name: 'Puzzle', description: 'p' }).returning({ id: categories.id });
+    const [nova] = await targetDb.insert(publishers).values({ name: 'Nova Forge', description: 'n' }).returning({ id: publishers.id });
+    const [pixel] = await targetDb.insert(publishers).values({ name: 'Pixel Peak', description: 'x' }).returning({ id: publishers.id });
+
+    await targetDb.insert(games).values([
+        { title: 'Alpha Tactics', description: 'A', starRating: 4.1, categoryId: strategy.id, publisherId: nova.id },
+        { title: 'Beta Blocks', description: 'B', starRating: 4.0, categoryId: puzzle.id, publisherId: nova.id },
+        { title: 'Gamma Grid', description: 'G', starRating: 4.5, categoryId: strategy.id, publisherId: pixel.id },
+    ]);
+
+    return { strategyId: strategy.id, puzzleId: puzzle.id, novaId: nova.id, pixelId: pixel.id };
+}
+
 describe('games data-access helpers', () => {
     let db: Database;
 
     beforeEach(async () => {
         db = await createTestDatabase();
+    });
+
+    describe('filtering helpers', () => {
+        let db: Database;
+
+        beforeEach(async () => {
+            db = await createTestDatabase();
+        });
+
+        it('filters by multiple categories', async () => {
+            const ids = await seedFilterFixture(db);
+            const result = await getFilteredGames(db, { categoryIds: [ids.puzzleId, ids.strategyId] });
+            expect(result.map((g) => g.title)).toEqual(['Alpha Tactics', 'Beta Blocks', 'Gamma Grid']);
+        });
+
+        it('filters by single publisher', async () => {
+            const ids = await seedFilterFixture(db);
+            const result = await getFilteredGames(db, { publisherId: ids.pixelId });
+            expect(result.map((g) => g.title)).toEqual(['Gamma Grid']);
+        });
+
+        it('combines category and publisher filters', async () => {
+            const ids = await seedFilterFixture(db);
+            const result = await getFilteredGames(db, { categoryIds: [ids.strategyId], publisherId: ids.novaId });
+            expect(result.map((g) => g.title)).toEqual(['Alpha Tactics']);
+        });
+
+        it('returns empty list when no game matches filters', async () => {
+            const ids = await seedFilterFixture(db);
+            const result = await getFilteredGames(db, { categoryIds: [ids.puzzleId], publisherId: ids.pixelId });
+            expect(result).toEqual([]);
+        });
+
+        it('ignores invalid filter ids', async () => {
+            await seedFilterFixture(db);
+            const result = await getFilteredGames(db, { categoryIds: [0, -1], publisherId: -10 });
+            expect(result.map((g) => g.title)).toEqual(['Alpha Tactics', 'Beta Blocks', 'Gamma Grid']);
+        });
+
+        it('returns categories and publishers ordered by name', async () => {
+            await seedFilterFixture(db);
+            const categoryNames = (await getAllCategories(db)).map((c) => c.name);
+            const publisherNames = (await getAllPublishers(db)).map((p) => p.name);
+            expect(categoryNames).toEqual(['Puzzle', 'Strategy']);
+            expect(publisherNames).toEqual(['Nova Forge', 'Pixel Peak']);
+        });
     });
 
     it('returns all games ordered by title', async () => {
