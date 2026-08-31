@@ -32,6 +32,13 @@ const games = await getAllGames(getDatabase());
 </Layout>
 ```
 
+### Component Contracts and Comments
+
+- Every reusable component must define and document its `Props` interface, including what each prop controls and whether it is optional.
+- Use TSDoc comments on the interface or its fields when the type alone does not make the component contract obvious.
+- Comments in frontmatter and markup explain intent, accessibility decisions, or non-obvious constraints; do not restate the rendered HTML or assignment below the comment.
+- Update or remove comments when the component behavior changes.
+
 ## Layouts
 
 - Create reusable layout components in `src/layouts/`
