@@ -39,5 +39,18 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
     },
+    rules: {
+      quotes: ["error", "single", { avoidEscape: true }],
+      semi: ["error", "always"],
+      "comma-dangle": ["error", "always-multiline"],
+    },
+  },
+
+  // Exported data-layer functions must expose explicit, testable contracts.
+  {
+    files: ["db/**/*.ts", "src/lib/**/*.ts"],
+    rules: {
+      "@typescript-eslint/explicit-module-boundary-types": "error",
+    },
   },
 ];
