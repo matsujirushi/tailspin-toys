@@ -1,0 +1,50 @@
+---
+import type { GetStaticPaths } from 'astro';
+import GameListPage from '../../components/GameListPage.astro';
+import Layout from '../../layouts/Layout.astro';
+import { getDatabase } from '../../lib/db';
+import {
+  getAllCategories,
+  getAllPublishers,
+  getPaginatedGames,
+  type PaginatedGames,
+} from '../../lib/games';
+import type { Category, Publisher } from '../../types/game';
+
+export const prerender = true;
+
+interface Props {
+  categories: Category[];
+  publishers: Publisher[];
+  pagination: PaginatedGames;
+}
+
+export const getStaticPaths = (async () => {
+  const pageSize = 9;
+  const db = getDatabase();
+  const firstPage = await getPaginatedGames(db, 1, pageSize);
+  const pageNumbers = Array.from(
+    { length: Math.max(firstPage.totalPages - 1, 0) },
+    (_, index) => index + 2,
+  );
+
+  return Promise.all(pageNumbers.map(async (page) => {
+    const [categories, publishers, pagination] = await Promise.all([
+      getAllCategories(db),
+      getAllPublishers(db),
+      getPaginatedGames(db, page, pageSize),
+    ]);
+
+    return {
+      params: { page: String(page) },
+      props: { categories, publishers, pagination },
+    };
+  }));
+}) satisfies GetStaticPaths;
+
+const { categories, publishers, pagination } = Astro.props;
+---
+
+<Layout title={`Games - Page ${pagination.currentPage} - Tailspin Toys`}>
+  <GameListPage {categories} {publishers} {pagination} />
+</Layout>
