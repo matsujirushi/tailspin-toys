@@ -1,0 +1,57 @@
+---
+import type { GetStaticPaths } from 'astro';
+import ArrowLeft from '../../assets/icons/arrow-left.svg';
+import Card from '../../components/Card.astro';
+import EmptyState from '../../components/EmptyState.astro';
+import GameCard from '../../components/GameCard.astro';
+import Button from '../../components/Button.astro';
+import Layout from '../../layouts/Layout.astro';
+import { getDatabase } from '../../lib/db';
+import { getAllPublishers, getGamesByPublisher, getPublisherById } from '../../lib/games';
+
+export const prerender = true;
+
+export const getStaticPaths = (async () => {
+    const publishers = await getAllPublishers(getDatabase());
+    return publishers.map((publisher) => ({ params: { id: String(publisher.id) } }));
+}) satisfies GetStaticPaths;
+
+const publisherId = Number(Astro.params.id);
+const db = getDatabase();
+const publisher = await getPublisherById(db, publisherId);
+
+if (!publisher) {
+    return Astro.redirect('/404');
+}
+
+const games = await getGamesByPublisher(db, publisher.id);
+---
+
+<Layout title={`${publisher.name} - Tailspin Toys`}>
+    <div class="py-8" data-testid="publisher-page">
+        <Card as="section" class="mb-8 p-6" aria-labelledby="publisher-title" data-testid="publisher-details">
+            <h1 id="publisher-title" class="mb-3 text-3xl font-bold text-slate-100" data-testid="publisher-name">
+                {publisher.name}
+            </h1>
+            <p class="text-slate-300" data-testid="publisher-description">
+                {publisher.description ?? 'No publisher description available.'}
+            </p>
+        </Card>
+
+        <h2 class="mb-6 text-2xl font-medium text-slate-100">Games by {publisher.name}</h2>
+        {games.length === 0 ? (
+            <EmptyState text="This publisher has no games in the catalog yet." />
+        ) : (
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" data-testid="publisher-games-grid">
+                {games.map((game) => <GameCard {game} />)}
+            </div>
+        )}
+
+        <div class="mt-8">
+            <Button href="/" size="sm" data-testid="publisher-back-link">
+                <ArrowLeft class="mr-2 h-5 w-5" aria-hidden="true" />
+                Back to all games
+            </Button>
+        </div>
+    </div>
+</Layout>

@@ -149,6 +149,13 @@ test.describe('Game Listing and Navigation', () => {
         await expect(page.getByTestId('game-details-category')).not.toBeEmpty();
       }
     });
+
+    await test.step('Verify category and publisher descriptions are displayed', async () => {
+      await expect(page.getByTestId('game-details-category-description')).toBeVisible();
+      await expect(page.getByTestId('game-details-category-description')).not.toBeEmpty();
+      await expect(page.getByTestId('game-details-publisher-description')).toBeVisible();
+      await expect(page.getByTestId('game-details-publisher-description')).not.toBeEmpty();
+    });
   });
 
   test('should display a button to back the game', async ({ page }) => {
@@ -197,5 +204,19 @@ test.describe('Game Listing and Navigation', () => {
       await expect(page.getByTestId('not-found-heading')).not.toBeEmpty();
       await expect(page.getByTestId('not-found-home-link')).toBeVisible();
     });
+  });
+
+  test('should display a publisher page with that publisher’s games', async ({ page }) => {
+    await page.goto('/game/1');
+    const publisherLink = page.getByTestId('game-details-publisher');
+    await expect(publisherLink).toHaveAttribute('href', /\/publisher\/\d+/);
+    await publisherLink.click();
+
+    await expect(page).toHaveURL(/\/publisher\/\d+/);
+    await expect(page.getByTestId('publisher-page')).toBeVisible();
+    await expect(page.getByTestId('publisher-name')).not.toBeEmpty();
+    await expect(page.getByTestId('publisher-description')).not.toBeEmpty();
+    await expect(page.getByTestId('publisher-games-grid')).toBeVisible();
+    await expect(page.getByTestId('publisher-games-grid').getByTestId('game-card').first()).toBeVisible();
   });
 });
