@@ -9,6 +9,7 @@ import {
     getGameById,
     getAllPublishers,
     getFilteredGames,
+    getPaginatedGames,
 } from './games';
 
 async function seedGames(db: Database, count: number): Promise<void> {
@@ -119,6 +120,39 @@ describe('games data-access helpers', () => {
         const ids = await getAllGameIds(db);
         const all = await getAllGames(db);
         expect(ids).toEqual(all.map((g) => g.id));
+    });
+
+    describe('getPaginatedGames', () => {
+        it('returns the requested page in title order with pagination metadata', async () => {
+            await seedGames(db, 5);
+
+            const result = await getPaginatedGames(db, 2, 2);
+
+            expect(result.games.map((game) => game.title)).toEqual(['Game 03', 'Game 04']);
+            expect(result).toMatchObject({
+                currentPage: 2,
+                pageSize: 2,
+                totalGames: 5,
+                totalPages: 3,
+            });
+        });
+
+        it('returns an empty page for an empty database', async () => {
+            const result = await getPaginatedGames(db, 1, 9);
+
+            expect(result.games).toEqual([]);
+            expect(result.totalGames).toBe(0);
+            expect(result.totalPages).toBe(0);
+        });
+
+        it.each([
+            { page: 0, pageSize: 9 },
+            { page: 1.5, pageSize: 9 },
+            { page: 1, pageSize: 0 },
+            { page: 1, pageSize: 2.5 },
+        ])('rejects invalid pagination values %#', async ({ page, pageSize }) => {
+            await expect(getPaginatedGames(db, page, pageSize)).rejects.toThrow(RangeError);
+        });
     });
 
     it('fetches a single game by id', async () => {

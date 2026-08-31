@@ -48,6 +48,30 @@ test.describe('Game Listing and Navigation', () => {
     });
   });
 
+  test('should paginate the game list with accessible controls', async ({ page }) => {
+    await test.step('Verify the first page and pagination state', async () => {
+      await page.goto('/');
+      await expect(page.getByTestId('game-card')).toHaveCount(9);
+      await expect(page.getByRole('navigation', { name: 'Game list pagination' })).toBeVisible();
+      await expect(page.getByTestId('pagination-page-1')).toHaveAttribute('aria-current', 'page');
+      await expect(page.getByTestId('pagination-previous')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    await test.step('Navigate to the next page', async () => {
+      await page.getByTestId('pagination-next').click();
+      await expect(page).toHaveURL('/page/2');
+      await expect(page.getByTestId('game-card')).toHaveCount(9);
+      await expect(page.getByTestId('pagination-page-2')).toHaveAttribute('aria-current', 'page');
+    });
+
+    await test.step('Navigate to the final page', async () => {
+      await page.getByTestId('pagination-next').click();
+      await expect(page).toHaveURL('/page/3');
+      await expect(page.getByTestId('game-card')).toHaveCount(3);
+      await expect(page.getByTestId('pagination-next')).toHaveAttribute('aria-disabled', 'true');
+    });
+  });
+
   test('should clear filters and restore full results', async ({ page }) => {
     await test.step('Apply a category filter', async () => {
       await page.goto('/?category=1');

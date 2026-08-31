@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, inArray } from 'drizzle-orm';
 import type { Database } from './db';
 import { games, categories, publishers } from '../../db/schema';
 import type { Category, Game, Publisher } from '../types/game';
@@ -55,10 +55,53 @@ export interface GameFilters {
     publisherId?: number;
 }
 
+export interface PaginatedGames {
+    games: Game[];
+    currentPage: number;
+    pageSize: number;
+    totalGames: number;
+    totalPages: number;
+}
+
 /** All games ordered by title. */
 export async function getAllGames(db: Database): Promise<Game[]> {
     const rows = await baseGamesQuery(db).orderBy(asc(games.title));
     return rows.map(mapGame);
+}
+
+/**
+ * Returns one page of games in stable title and id order.
+ *
+ * @param db Injectable database client used by pages and tests.
+ * @param page One-based page number.
+ * @param pageSize Maximum number of games returned per page.
+ * @returns The requested games and pagination metadata.
+ */
+export async function getPaginatedGames(
+    db: Database,
+    page: number,
+    pageSize: number,
+): Promise<PaginatedGames> {
+    if (!Number.isInteger(page) || page < 1) {
+        throw new RangeError('page must be a positive integer');
+    }
+    if (!Number.isInteger(pageSize) || pageSize < 1) {
+        throw new RangeError('pageSize must be a positive integer');
+    }
+
+    const [{ totalGames }] = await db.select({ totalGames: count() }).from(games);
+    const rows = await baseGamesQuery(db)
+        .orderBy(asc(games.title), asc(games.id))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+    return {
+        games: rows.map(mapGame),
+        currentPage: page,
+        pageSize,
+        totalGames,
+        totalPages: Math.ceil(totalGames / pageSize),
+    };
 }
 
 /** Games filtered by category ids (OR) and publisher id (AND), ordered by title. */

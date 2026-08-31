@@ -1,0 +1,60 @@
+---
+interface Props {
+  /** One-based page currently displayed. */
+  currentPage: number;
+  /** Total number of available pages. */
+  totalPages: number;
+}
+
+const { currentPage, totalPages } = Astro.props;
+const pageHref = (page: number): string => page === 1 ? '/' : `/page/${page}`;
+const linkClasses =
+  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-600 px-3 text-slate-200 transition-colors hover:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none';
+const disabledClasses =
+  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-700 px-3 text-slate-500';
+---
+
+{totalPages > 1 && (
+  <nav class="mt-8 flex flex-wrap items-center justify-center gap-2" aria-label="Game list pagination" data-testid="pagination">
+    {currentPage > 1 ? (
+      <a
+        href={pageHref(currentPage - 1)}
+        class={linkClasses}
+        rel="prev"
+        data-testid="pagination-previous"
+      >
+        Previous
+      </a>
+    ) : (
+      <span class={disabledClasses} aria-disabled="true" data-testid="pagination-previous">Previous</span>
+    )}
+
+    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+      <a
+        href={pageHref(page)}
+        class:list={[
+          linkClasses,
+          page === currentPage && 'border-blue-500 bg-blue-600 text-white hover:bg-blue-600',
+        ]}
+        aria-current={page === currentPage ? 'page' : undefined}
+        aria-label={`Page ${page}`}
+        data-testid={`pagination-page-${page}`}
+      >
+        {page}
+      </a>
+    ))}
+
+    {currentPage < totalPages ? (
+      <a
+        href={pageHref(currentPage + 1)}
+        class={linkClasses}
+        rel="next"
+        data-testid="pagination-next"
+      >
+        Next
+      </a>
+    ) : (
+      <span class={disabledClasses} aria-disabled="true" data-testid="pagination-next">Next</span>
+    )}
+  </nav>
+)}

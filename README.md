@@ -2,7 +2,7 @@
 
 Tailspin Toys is a crowdfunding platform for games with a developer theme. The project is a website for a fictional game crowd-funding company, built as a single [Astro](https://astro.build/) site (fully prerendered/static output) styled with [Tailwind CSS](https://tailwindcss.com/). Its data lives in a local SQLite database accessed through [Drizzle ORM](https://orm.drizzle.team/) and Node.js's built-in SQLite driver; pages query the database directly in frontmatter at build time, so there is no separate backend service.
 
-On the home page, users can filter the game listing by selecting one or more categories and a single publisher, and combine those filters to narrow results.
+On the home page, users can browse the game catalog in pages of nine games, filter the current page by selecting one or more categories and a single publisher, and combine those filters to narrow results.
 
 ## Architecture
 
