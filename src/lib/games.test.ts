@@ -8,6 +8,9 @@ import {
     getAllGameIds,
     getGameById,
     getAllPublishers,
+    getCatalogSummary,
+    getGamesByPublisher,
+    getPublisherById,
     getFilteredGames,
     getPaginatedGames,
 } from './games';
@@ -92,6 +95,17 @@ describe('games data-access helpers', () => {
             expect(result).toEqual([]);
         });
 
+        it('returns catalog totals and averages only rated games', async () => {
+            await seedFilterFixture(db);
+            await db.insert(games).values({ title: 'Unrated Game', description: 'U', starRating: null, categoryId: 1, publisherId: 1 });
+
+            await expect(getCatalogSummary(db)).resolves.toEqual({ totalGames: 4, averageRating: 4.2 });
+        });
+
+        it('returns a null average for an empty catalog', async () => {
+            await expect(getCatalogSummary(db)).resolves.toEqual({ totalGames: 0, averageRating: null });
+        });
+
         it('ignores invalid filter ids', async () => {
             await seedFilterFixture(db);
             const result = await getFilteredGames(db, { categoryIds: [0, -1], publisherId: -10 });
@@ -111,8 +125,8 @@ describe('games data-access helpers', () => {
         await seedGames(db, 3);
         const all = await getAllGames(db);
         expect(all.map((g) => g.title)).toEqual(['Game 01', 'Game 02', 'Game 03']);
-        expect(all[0].category).toEqual({ id: expect.any(Number), name: 'Strategy' });
-        expect(all[0].publisher).toEqual({ id: expect.any(Number), name: 'Pub One' });
+        expect(all[0].category).toEqual({ id: expect.any(Number), name: 'Strategy', description: 'cat' });
+        expect(all[0].publisher).toEqual({ id: expect.any(Number), name: 'Pub One', description: 'pub' });
     });
 
     it('returns all game ids ordered by title', async () => {
@@ -165,5 +179,20 @@ describe('games data-access helpers', () => {
     it('returns null for a non-existent game', async () => {
         await seedGames(db, 2);
         expect(await getGameById(db, 99999)).toBeNull();
+    });
+
+    it('returns publisher details and its games in title order', async () => {
+        const ids = await seedFilterFixture(db);
+
+        await expect(getPublisherById(db, ids.novaId)).resolves.toMatchObject({ id: ids.novaId, name: 'Nova Forge' });
+        await expect(getGamesByPublisher(db, ids.novaId)).resolves.toMatchObject({
+            0: { title: 'Alpha Tactics' },
+            1: { title: 'Beta Blocks' },
+        });
+    });
+
+    it('returns null and an empty list for an unknown publisher', async () => {
+        await expect(getPublisherById(db, 99999)).resolves.toBeNull();
+        await expect(getGamesByPublisher(db, 99999)).resolves.toEqual([]);
     });
 });

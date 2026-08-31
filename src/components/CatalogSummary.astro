@@ -1,0 +1,26 @@
+---
+import Card from './Card.astro';
+import type { CatalogSummary as CatalogSummaryData } from '../lib/games';
+
+interface Props {
+    /** Aggregate catalog values displayed above the game list. */
+    summary: CatalogSummaryData;
+}
+
+const { summary } = Astro.props;
+const formattedAverage = summary.averageRating === null ? 'Not rated yet' : `${summary.averageRating.toFixed(1)} / 5`;
+---
+
+<Card as="section" class="mb-8 p-6" aria-labelledby="catalog-summary-title" data-testid="catalog-summary">
+    <h2 id="catalog-summary-title" class="mb-4 text-xl font-semibold text-slate-100">Catalog at a glance</h2>
+    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+            <dt class="text-sm text-slate-300">Games in catalog</dt>
+            <dd class="text-2xl font-bold text-slate-100" data-testid="catalog-total-games">{summary.totalGames}</dd>
+        </div>
+        <div>
+            <dt class="text-sm text-slate-300">Average rating</dt>
+            <dd class="text-2xl font-bold text-slate-100" data-testid="catalog-average-rating">{formattedAverage}</dd>
+        </div>
+    </dl>
+</Card>

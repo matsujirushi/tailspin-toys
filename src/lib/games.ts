@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
 import type { Database } from './db';
 import { games, categories, publishers } from '../../db/schema';
 import type { Category, Game, Publisher } from '../types/game';
@@ -10,8 +10,10 @@ const gameSelection = {
     starRating: games.starRating,
     categoryId: categories.id,
     categoryName: categories.name,
+    categoryDescription: categories.description,
     publisherId: publishers.id,
     publisherName: publishers.name,
+    publisherDescription: publishers.description,
 };
 
 type GameSelectionRow = {
@@ -21,8 +23,10 @@ type GameSelectionRow = {
     starRating: number | null;
     categoryId: number | null;
     categoryName: string | null;
+    categoryDescription: string | null;
     publisherId: number | null;
     publisherName: string | null;
+    publisherDescription: string | null;
 };
 
 function mapGame(row: GameSelectionRow): Game {
@@ -33,11 +37,11 @@ function mapGame(row: GameSelectionRow): Game {
         starRating: row.starRating,
         category:
             row.categoryId !== null && row.categoryName !== null
-                ? { id: row.categoryId, name: row.categoryName }
+                ? { id: row.categoryId, name: row.categoryName, description: row.categoryDescription }
                 : null,
         publisher:
             row.publisherId !== null && row.publisherName !== null
-                ? { id: row.publisherId, name: row.publisherName }
+                ? { id: row.publisherId, name: row.publisherName, description: row.publisherDescription }
                 : null,
     };
 }
@@ -61,6 +65,17 @@ export interface PaginatedGames {
     pageSize: number;
     totalGames: number;
     totalPages: number;
+}
+
+export interface CatalogSummary {
+    totalGames: number;
+    averageRating: number | null;
+}
+
+export interface PublisherDetails {
+    id: number;
+    name: string;
+    description: string | null;
 }
 
 /** All games ordered by title. */
@@ -102,6 +117,56 @@ export async function getPaginatedGames(
         totalGames,
         totalPages: Math.ceil(totalGames / pageSize),
     };
+}
+
+/**
+ * Returns the catalog size and average of the available star ratings.
+ *
+ * @param db Injectable database client used by pages and tests.
+ * @returns Catalog totals, with a null average when no games are rated.
+ */
+export async function getCatalogSummary(db: Database): Promise<CatalogSummary> {
+    const [{ totalGames }] = await db.select({ totalGames: count() }).from(games);
+    const ratedGames = await db
+        .select({ starRating: games.starRating })
+        .from(games)
+        .where(sql`${games.starRating} IS NOT NULL`);
+    const averageRating =
+        ratedGames.length > 0
+            ? ratedGames.reduce((total, game) => total + (game.starRating ?? 0), 0) / ratedGames.length
+            : null;
+
+    return { totalGames, averageRating };
+}
+
+/**
+ * Returns a publisher's details, or null when the id is unknown.
+ *
+ * @param db Injectable database client used by pages and tests.
+ * @param id Publisher identifier.
+ * @returns Publisher details or null when no publisher matches.
+ */
+export async function getPublisherById(db: Database, id: number): Promise<PublisherDetails | null> {
+    const publisher = await db
+        .select({ id: publishers.id, name: publishers.name, description: publishers.description })
+        .from(publishers)
+        .where(eq(publishers.id, id))
+        .get();
+    return publisher ?? null;
+}
+
+/**
+ * Returns all games belonging to a publisher in stable title order.
+ *
+ * @param db Injectable database client used by pages and tests.
+ * @param publisherId Publisher identifier used to filter games.
+ * @returns Games published by the requested publisher.
+ */
+export async function getGamesByPublisher(db: Database, publisherId: number): Promise<Game[]> {
+    const rows = await baseGamesQuery(db)
+        .where(eq(games.publisherId, publisherId))
+        .orderBy(asc(games.title), asc(games.id));
+    return rows.map(mapGame);
 }
 
 /** Games filtered by category ids (OR) and publisher id (AND), ordered by title. */

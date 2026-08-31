@@ -1,20 +1,23 @@
 ---
 import GameListPage from '../components/GameListPage.astro';
+import CatalogSummary from '../components/CatalogSummary.astro';
 import Layout from '../layouts/Layout.astro';
 import { getDatabase } from '../lib/db';
-import { getAllCategories, getAllPublishers, getPaginatedGames } from '../lib/games';
+import { getAllCategories, getAllPublishers, getCatalogSummary, getPaginatedGames } from '../lib/games';
 
 export const prerender = true;
 
 const PAGE_SIZE = 9;
 const db = getDatabase();
-const [categories, publishers, pagination] = await Promise.all([
+const [categories, publishers, pagination, summary] = await Promise.all([
   getAllCategories(db),
   getAllPublishers(db),
   getPaginatedGames(db, 1, PAGE_SIZE),
+  getCatalogSummary(db),
 ]);
 ---
 
 <Layout title="Tailspin Toys - Crowdfunding your new favorite game!">
   <GameListPage {categories} {publishers} {pagination} />
+  <CatalogSummary {summary} />
 </Layout>
